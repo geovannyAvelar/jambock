@@ -17,7 +17,6 @@ A powerful PDF report generation engine using **Freemarker** templates and **Fly
 - ✅ Multiple output options (File, OutputStream, byte array)
 - ✅ Pre-built templates (sample report and invoice)
 - ✅ Comprehensive error handling
-- ✅ Fully tested
 
 ## Dependencies
 
@@ -391,6 +390,6 @@ try {
 
 ## License
 
-
+This project is licensed under the MIT License.
 
 
