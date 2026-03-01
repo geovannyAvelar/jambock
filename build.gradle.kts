@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "dev.avelar"
-version = "1.0.0"
+version = "1.0.1"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -106,18 +106,13 @@ publishing {
             }
         }
 
-        // Maven Central Repository (requires credentials and OSSRH account)
+        // Maven Central Repository (Sonatype Central - token-based auth)
         maven {
             name = "MavenCentral"
-            url = uri(
-                if ((version as String).endsWith("SNAPSHOT"))
-                    "https://s01.oss.sonatype.org/content/repositories/snapshots/"
-                else
-                    "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-            )
+            url = uri("https://central.sonatype.com/publishing/releases")
             credentials {
-                username = System.getenv("OSSRH_USERNAME") ?: findProperty("ossrhUsername") as String?
-                password = System.getenv("OSSRH_PASSWORD") ?: findProperty("ossrhPassword") as String?
+                username = System.getenv("SONATYPE_USERNAME") ?: findProperty("sonatypeUsername") as String?
+                password = System.getenv("SONATYPE_PASSWORD") ?: findProperty("sonatypePassword") as String?
             }
         }
 
