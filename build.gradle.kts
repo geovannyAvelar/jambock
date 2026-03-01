@@ -64,10 +64,13 @@ publishing {
                 description.set(projectDescription ?: "A powerful PDF report generation engine using Freemarker templates and Flying Saucer (HTML to PDF)")
                 url.set(projectUrl ?: "https://github.com/geovannyAvelar/jambock")
 
+                inceptionYear.set("2024")
+
                 licenses {
                     license {
                         name.set("MIT License")
                         url.set("https://opensource.org/licenses/MIT")
+                        distribution.set("repo")
                     }
                 }
 
@@ -75,7 +78,7 @@ publishing {
                     developer {
                         id.set(developerId ?: "avelar")
                         name.set(developerName ?: "Giovani Avelar")
-                        email.set(developerEmail ?: "github@avelar.devp")
+                        email.set(developerEmail ?: "github@avelar.dev")
                     }
                 }
 
@@ -84,6 +87,11 @@ publishing {
                     connection.set("scm:git:${scmUrl}.git")
                     developerConnection.set("scm:git:${scmUrl}.git")
                     url.set(scmUrl)
+                }
+
+                issueManagement {
+                    system.set("GitHub Issues")
+                    url.set("https://github.com/geovannyAvelar/jambock/issues")
                 }
             }
         }
