@@ -2,6 +2,7 @@ plugins {
     id("java")
     id("maven-publish")
     id("java-library")
+    id("signing")
 }
 
 group = "dev.avelar"
@@ -106,17 +107,19 @@ publishing {
         }
 
         // Maven Central Repository (requires credentials and OSSRH account)
-        // Uncomment and configure when ready to publish to Maven Central
-        /*
         maven {
             name = "MavenCentral"
-            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+            url = uri(
+                if ((version as String).endsWith("SNAPSHOT"))
+                    "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+                else
+                    "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+            )
             credentials {
                 username = System.getenv("OSSRH_USERNAME") ?: findProperty("ossrhUsername") as String?
                 password = System.getenv("OSSRH_PASSWORD") ?: findProperty("ossrhPassword") as String?
             }
         }
-        */
 
         // Private Maven Repository (Artifactory, Nexus, etc)
         // Uncomment and configure for your private repository
@@ -132,3 +135,16 @@ publishing {
         */
     }
 }
+
+// ============================================================================
+// Signing Configuration
+// ============================================================================
+signing {
+    val gpgKey = System.getenv("GPG_PRIVATE_KEY") ?: findProperty("signing.key") as String?
+    val gpgPassphrase = System.getenv("GPG_PASSPHRASE") ?: findProperty("signing.password") as String?
+    if (gpgKey != null && gpgPassphrase != null) {
+        useInMemoryPgpKeys(gpgKey, gpgPassphrase)
+    }
+    sign(publishing.publications["mavenJava"])
+}
+
