@@ -31,7 +31,7 @@ jobs:
       - name: Build and Test
         run: ./gradlew build
 
-      - name: Publish to Maven Central (Sonatype Central)
+      - name: Publish to Maven Central (OSSRH)
         env:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
