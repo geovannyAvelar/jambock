@@ -114,10 +114,15 @@ publishing {
             }
         }
 
-        // Maven Central Repository (Sonatype Central - token-based auth)
+        // Maven Central Repository (Sonatype OSSRH - proven stable endpoint)
         maven {
             name = "MavenCentral"
-            url = uri("https://central.sonatype.com/publishing/releases")
+            url = uri(
+                if ((version as String).endsWith("SNAPSHOT"))
+                    "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+                else
+                    "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+            )
             credentials {
                 username = System.getenv("SONATYPE_USERNAME") ?: findProperty("sonatypeUsername") as String?
                 password = System.getenv("SONATYPE_PASSWORD") ?: findProperty("sonatypePassword") as String?
@@ -147,7 +152,7 @@ signing {
     val gpgPassphrase = System.getenv("GPG_PASSPHRASE") ?: findProperty("signing.password") as String?
     if (gpgKey != null && gpgPassphrase != null) {
         useInMemoryPgpKeys(gpgKey, gpgPassphrase)
+        sign(publishing.publications["mavenJava"])
     }
-    sign(publishing.publications["mavenJava"])
 }
 
