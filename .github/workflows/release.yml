@@ -31,11 +31,11 @@ jobs:
       - name: Build and Test
         run: ./gradlew build
 
-      - name: Publish to Maven Central (OSSRH)
+      - name: Publish to Maven Central (Sonatype Central Portal)
         env:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: ./gradlew publishMavenJavaPublicationToMavenCentralRepository
+        run: ./gradlew publishAggregationToCentralPortal
 

@@ -3,6 +3,7 @@ plugins {
     id("maven-publish")
     id("java-library")
     id("signing")
+    id("com.gradleup.nmcp") version "0.0.9"
 }
 
 group = "dev.avelar"
@@ -114,20 +115,7 @@ publishing {
             }
         }
 
-        // Maven Central Repository (Sonatype OSSRH - proven stable endpoint)
-        maven {
-            name = "MavenCentral"
-            url = uri(
-                if ((version as String).endsWith("SNAPSHOT"))
-                    "https://s01.oss.sonatype.org/content/repositories/snapshots/"
-                else
-                    "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-            )
-            credentials {
-                username = System.getenv("SONATYPE_USERNAME") ?: findProperty("sonatypeUsername") as String?
-                password = System.getenv("SONATYPE_PASSWORD") ?: findProperty("sonatypePassword") as String?
-            }
-        }
+        // Maven Central publishing is handled by the nmcp plugin below
 
         // Private Maven Repository (Artifactory, Nexus, etc)
         // Uncomment and configure for your private repository
@@ -153,6 +141,20 @@ signing {
     if (gpgKey != null && gpgPassphrase != null) {
         useInMemoryPgpKeys(gpgKey, gpgPassphrase)
         sign(publishing.publications["mavenJava"])
+    }
+}
+
+// ============================================================================
+// Sonatype Central Portal Publishing (nmcp)
+// Uses tokens generated at: central.sonatype.org → Account → Generate User Token
+// ============================================================================
+nmcp {
+    publish("mavenJava") {
+        username = System.getenv("SONATYPE_USERNAME") ?: ""
+        password = System.getenv("SONATYPE_PASSWORD") ?: ""
+        // AUTOMATIC: releases immediately after validation
+        // MANUAL: stays in staging for manual review at central.sonatype.com
+        publicationType = "AUTOMATIC"
     }
 }
 
