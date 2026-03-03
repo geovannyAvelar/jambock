@@ -4,8 +4,8 @@ import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import freemarker.template.TemplateExceptionHandler;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.xhtmlrenderer.pdf.ITextRenderer;
 
 import java.io.*;
@@ -19,7 +19,7 @@ import java.util.Map;
  */
 public class ReportEngine {
 
-    private static final Logger logger = LoggerFactory.getLogger(ReportEngine.class);
+    private static final Logger logger = Logger.getLogger(ReportEngine.class.getName());
 
     private final Configuration freemarkerConfig;
 
@@ -68,12 +68,12 @@ public class ReportEngine {
     public void generateReport(String templateName, Map<String, Object> data, OutputStream outputStream)
             throws ReportGenerationException {
         try {
-            logger.info("Generating report using template: {}", templateName);
+            logger.info("Generating report using template: " + templateName);
 
             // Step 1: Process the Freemarker template to generate HTML
             String html = processTemplate(templateName, data);
 
-            logger.debug("HTML generated, converting to PDF...");
+            logger.fine("HTML generated, converting to PDF...");
 
             // Step 2: Convert HTML to PDF using Flying Saucer
             convertHtmlToPdf(html, outputStream);
@@ -81,7 +81,7 @@ public class ReportEngine {
             logger.info("Report generated successfully");
 
         } catch (Exception e) {
-            logger.error("Error generating report", e);
+            logger.log(Level.SEVERE, "Error generating report", e);
             throw new ReportGenerationException("Failed to generate report: " + e.getMessage(), e);
         }
     }

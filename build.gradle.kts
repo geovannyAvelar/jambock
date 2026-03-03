@@ -27,9 +27,6 @@ dependencies {
     // Flying Saucer for HTML to PDF conversion
     implementation("org.xhtmlrenderer:flying-saucer-pdf:9.5.1")
 
-    // SLF4J for logging (Java 8 compatible version)
-    implementation("org.slf4j:slf4j-api:1.7.36")
-    implementation("org.slf4j:slf4j-simple:1.7.36")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")

@@ -28,11 +28,9 @@ implementation("org.freemarker:freemarker:2.3.32")
 
 // Flying Saucer for HTML to PDF conversion
 implementation("org.xhtmlrenderer:flying-saucer-pdf:9.5.1")
-
-// SLF4J for logging (Java 8 compatible version)
-implementation("org.slf4j:slf4j-api:1.7.36")
-implementation("org.slf4j:slf4j-simple:1.7.36")
 ```
+
+> **Note:** Logging is handled via `java.util.logging` (JUL), which is built into the JDK — no extra logging dependency required. When used with Spring Boot, JUL is automatically bridged to the application's logging system.
 
 ## Quick Start
 
@@ -383,7 +381,7 @@ All report generation methods throw `ReportGenerationException` which wraps unde
 try {
     engine.generateReport("template.ftl", data, outputFile);
 } catch (ReportGenerationException e) {
-    logger.error("Failed to generate report", e);
+    Logger.getLogger(MyClass.class.getName()).log(Level.SEVERE, "Failed to generate report", e);
     // Handle error
 }
 ```
