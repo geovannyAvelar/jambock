@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "dev.avelar"
-version = "1.0.1"
+version = "1.0.2"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
