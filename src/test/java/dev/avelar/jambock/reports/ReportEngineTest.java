@@ -13,7 +13,7 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Tests for the ReportEngine class.
+ * Tests for the ReportEngine class (FreeMarker and Thymeleaf engines).
  */
 class ReportEngineTest {
 
@@ -21,10 +21,12 @@ class ReportEngineTest {
   Path tempDir;
 
   private ReportEngine engine;
+  private ReportEngine thymeleafEngine;
 
   @BeforeEach
   void setUp() {
-    engine = new ReportEngine();
+    engine = new ReportEngine();                                      // FreeMarker (default)
+    thymeleafEngine = new ReportEngine(new ThymeleafTemplateEngine()); // Thymeleaf
   }
 
   @Test
@@ -248,6 +250,72 @@ class ReportEngineTest {
     item.put("quantity", quantity);
     item.put("unitPrice", unitPrice);
     return item;
+  }
+
+  // =========================================================================
+  // Polymorphic engine tests
+  // =========================================================================
+
+  @Test
+  void testDefaultEngineIsFreemarker() {
+    assertInstanceOf(FreemarkerTemplateEngine.class, engine.getTemplateEngine(),
+        "Default engine should be FreemarkerTemplateEngine");
+  }
+
+  @Test
+  void testThymeleafEngineIsSet() {
+    assertInstanceOf(ThymeleafTemplateEngine.class, thymeleafEngine.getTemplateEngine(),
+        "Engine should be ThymeleafTemplateEngine");
+  }
+
+  // =========================================================================
+  // Thymeleaf engine tests
+  // =========================================================================
+
+  @Test
+  void testThymeleafGenerateReportToFile() throws ReportGenerationException {
+    Map<String, Object> data = createSampleReportData();
+
+    File outputFile = tempDir.resolve("thymeleaf-report.pdf").toFile();
+    thymeleafEngine.generateReport("sample-report", data, outputFile);
+
+    assertTrue(outputFile.exists(), "Thymeleaf report file should exist");
+    assertTrue(outputFile.length() > 0, "Thymeleaf report file should not be empty");
+  }
+
+  @Test
+  void testThymeleafGenerateReportAsBytes() throws ReportGenerationException {
+    Map<String, Object> data = createSampleReportData();
+
+    byte[] pdfBytes = thymeleafEngine.generateReportAsBytes("sample-report", data);
+
+    assertNotNull(pdfBytes, "Thymeleaf PDF bytes should not be null");
+    assertTrue(pdfBytes.length > 0, "Thymeleaf PDF bytes should not be empty");
+
+    String header = new String(Arrays.copyOfRange(pdfBytes, 0, 4));
+    assertEquals("%PDF", header, "Should be a valid PDF file");
+  }
+
+  @Test
+  void testThymeleafReportBuilderWithTemplate() throws ReportGenerationException {
+    Map<String, Object> data = createSampleReportData();
+
+    byte[] pdfBytes = new ReportBuilder(thymeleafEngine)
+        .withTemplate("sample-report")
+        .withData(data)
+        .generateAsBytes();
+
+    assertNotNull(pdfBytes);
+    assertTrue(pdfBytes.length > 0);
+  }
+
+  @Test
+  void testThymeleafInvalidTemplateName() {
+    Map<String, Object> data = createSampleReportData();
+
+    assertThrows(ReportGenerationException.class, () ->
+        thymeleafEngine.generateReport("non-existent-template", data, tempDir.resolve("test.pdf").toFile()),
+        "Should throw exception for non-existent Thymeleaf template");
   }
 }
 

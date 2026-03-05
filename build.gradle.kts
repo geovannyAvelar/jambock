@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "dev.avelar"
-version = "1.0.2"
+version = "1.1.0"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -21,12 +21,9 @@ repositories {
 }
 
 dependencies {
-    // Freemarker template engine
     implementation("org.freemarker:freemarker:2.3.32")
-
-    // Flying Saucer for HTML to PDF conversion
+    implementation("org.thymeleaf:thymeleaf:3.1.2.RELEASE")
     implementation("org.xhtmlrenderer:flying-saucer-pdf:9.5.1")
-
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")

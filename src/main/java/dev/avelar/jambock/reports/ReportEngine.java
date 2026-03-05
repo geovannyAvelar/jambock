@@ -1,85 +1,92 @@
 package dev.avelar.jambock.reports;
 
-import freemarker.template.Configuration;
-import freemarker.template.Template;
-import freemarker.template.TemplateException;
-import freemarker.template.TemplateExceptionHandler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.xhtmlrenderer.pdf.ITextRenderer;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.util.Locale;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * Main report engine that uses Freemarker for templating and Flying Saucer for PDF generation.
- * This class coordinates the template processing and PDF conversion.
+ * Main report engine that converts a template (processed by a {@link TemplateEngine}) into a PDF
+ * using <a href="https://flyingsaucerproject.github.io/flyingsaucer/">Flying Saucer</a>.
+ *
+ * <p>The template processing strategy is fully polymorphic: any {@link TemplateEngine}
+ * implementation can be supplied at construction time. Two built-in implementations are provided:
+ * <ul>
+ *   <li>{@link FreemarkerTemplateEngine} — backed by Apache FreeMarker (default)</li>
+ *   <li>{@link ThymeleafTemplateEngine} — backed by Thymeleaf</li>
+ * </ul>
+ *
+ * <p><b>Backward-compatible usage (FreeMarker, default):</b>
+ * <pre>{@code
+ * ReportEngine engine = new ReportEngine();
+ * }</pre>
+ *
+ * <p><b>Using Thymeleaf:</b>
+ * <pre>{@code
+ * ReportEngine engine = new ReportEngine(new ThymeleafTemplateEngine());
+ * }</pre>
  */
 public class ReportEngine {
 
     private static final Logger logger = Logger.getLogger(ReportEngine.class.getName());
 
-    private final Configuration freemarkerConfig;
+    private final TemplateEngine templateEngine;
 
     /**
-     * Creates a new ReportEngine with default configuration.
-     * Templates are loaded from the classpath under /templates directory.
+     * Creates a new {@code ReportEngine} that uses the default {@link FreemarkerTemplateEngine}.
+     * Templates are loaded from the classpath under {@code /templates}.
      */
     public ReportEngine() {
-        this(createDefaultConfiguration());
+        this(new FreemarkerTemplateEngine());
     }
 
     /**
-     * Creates a new ReportEngine with custom Freemarker configuration.
+     * Creates a new {@code ReportEngine} with a custom FreeMarker configuration.
+     * This constructor is kept for backward compatibility.
      *
-     * @param freemarkerConfig the Freemarker configuration to use
+     * @param freemarkerConfig the FreeMarker {@link freemarker.template.Configuration} to use
      */
-    public ReportEngine(Configuration freemarkerConfig) {
-        this.freemarkerConfig = freemarkerConfig;
+    public ReportEngine(freemarker.template.Configuration freemarkerConfig) {
+        this(new FreemarkerTemplateEngine(freemarkerConfig));
     }
 
     /**
-     * Creates a default Freemarker configuration that loads templates from classpath.
+     * Creates a new {@code ReportEngine} that delegates template processing to the given
+     * {@link TemplateEngine} strategy.
      *
-     * @return configured Freemarker Configuration instance
+     * @param templateEngine the template engine to use (FreeMarker, Thymeleaf, or custom)
      */
-    private static Configuration createDefaultConfiguration() {
-        Configuration cfg = new Configuration(Configuration.VERSION_2_3_32);
-        cfg.setClassForTemplateLoading(ReportEngine.class, "/templates");
-        cfg.setDefaultEncoding(StandardCharsets.UTF_8.name());
-        cfg.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
-        cfg.setLogTemplateExceptions(false);
-        cfg.setWrapUncheckedExceptions(true);
-        cfg.setFallbackOnNullLoopVariable(false);
-        cfg.setLocale(Locale.US);
-        return cfg;
+    public ReportEngine(TemplateEngine templateEngine) {
+        this.templateEngine = templateEngine;
     }
 
     /**
-     * Generates a PDF report from a Freemarker template.
+     * Generates a PDF report from a template.
      *
-     * @param templateName the name of the template file (relative to template directory)
-     * @param data the data model to be used in the template
+     * @param templateName the name of the template file (relative to the template directory)
+     * @param data         the data model to be used in the template
      * @param outputStream the output stream where the PDF will be written
-     * @throws ReportGenerationException if there's an error generating the report
+     * @throws ReportGenerationException if there is an error generating the report
      */
     public void generateReport(String templateName, Map<String, Object> data, OutputStream outputStream)
             throws ReportGenerationException {
         try {
             logger.info("Generating report using template: " + templateName);
 
-            // Step 1: Process the Freemarker template to generate HTML
-            String html = processTemplate(templateName, data);
+            // Step 1: process the template to obtain HTML
+            String html = templateEngine.processTemplate(templateName, data);
 
             logger.fine("HTML generated, converting to PDF...");
 
-            // Step 2: Convert HTML to PDF using Flying Saucer
+            // Step 2: convert HTML to PDF using Flying Saucer
             convertHtmlToPdf(html, outputStream);
 
             logger.info("Report generated successfully");
 
+        } catch (ReportGenerationException e) {
+            throw e;
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error generating report", e);
             throw new ReportGenerationException("Failed to generate report: " + e.getMessage(), e);
@@ -90,9 +97,9 @@ public class ReportEngine {
      * Generates a PDF report and saves it to a file.
      *
      * @param templateName the name of the template file
-     * @param data the data model to be used in the template
-     * @param outputFile the output file where the PDF will be saved
-     * @throws ReportGenerationException if there's an error generating the report
+     * @param data         the data model to be used in the template
+     * @param outputFile   the output file where the PDF will be saved
+     * @throws ReportGenerationException if there is an error generating the report
      */
     public void generateReport(String templateName, Map<String, Object> data, File outputFile)
             throws ReportGenerationException {
@@ -107,9 +114,9 @@ public class ReportEngine {
      * Generates a PDF report and returns it as a byte array.
      *
      * @param templateName the name of the template file
-     * @param data the data model to be used in the template
+     * @param data         the data model to be used in the template
      * @return the PDF content as a byte array
-     * @throws ReportGenerationException if there's an error generating the report
+     * @throws ReportGenerationException if there is an error generating the report
      */
     public byte[] generateReportAsBytes(String templateName, Map<String, Object> data)
             throws ReportGenerationException {
@@ -119,28 +126,20 @@ public class ReportEngine {
     }
 
     /**
-     * Processes a Freemarker template with the given data model.
+     * Returns the {@link TemplateEngine} strategy used by this engine.
      *
-     * @param templateName the name of the template file
-     * @param data the data model
-     * @return the processed HTML as a string
-     * @throws IOException if template cannot be loaded
-     * @throws TemplateException if there's an error processing the template
+     * @return the current template engine
      */
-    private String processTemplate(String templateName, Map<String, Object> data)
-            throws IOException, TemplateException {
-        Template template = freemarkerConfig.getTemplate(templateName);
-        StringWriter writer = new StringWriter();
-        template.process(data, writer);
-        return writer.toString();
+    public TemplateEngine getTemplateEngine() {
+        return templateEngine;
     }
 
     /**
      * Converts HTML content to PDF using Flying Saucer.
      *
-     * @param html the HTML content to convert
+     * @param html         the HTML content to convert
      * @param outputStream the output stream where the PDF will be written
-     * @throws IOException if there's an error writing to the output stream
+     * @throws IOException if there is an error writing to the output stream
      */
     private void convertHtmlToPdf(String html, OutputStream outputStream) throws IOException {
         ITextRenderer renderer = new ITextRenderer();
@@ -149,14 +148,4 @@ public class ReportEngine {
         renderer.createPDF(outputStream);
         outputStream.flush();
     }
-
-    /**
-     * Gets the Freemarker configuration used by this engine.
-     *
-     * @return the Freemarker configuration
-     */
-    public Configuration getFreemarkerConfig() {
-        return freemarkerConfig;
-    }
 }
-
