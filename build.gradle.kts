@@ -24,6 +24,8 @@ dependencies {
     implementation("org.freemarker:freemarker:2.3.32")
     implementation("org.thymeleaf:thymeleaf:3.1.2.RELEASE")
     implementation("org.xhtmlrenderer:flying-saucer-pdf:9.5.1")
+    implementation("org.apache.poi:poi-ooxml:5.4.0")
+    implementation("org.jsoup:jsoup:1.18.1")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")

@@ -1,31 +1,28 @@
 package dev.avelar.jambock.reports;
 
-import org.xhtmlrenderer.pdf.ITextRenderer;
-
 import java.io.*;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Main report engine that converts a template (processed by a {@link TemplateEngine}) into a PDF
- * using <a href="https://flyingsaucerproject.github.io/flyingsaucer/">Flying Saucer</a>.
+ * Main report engine that converts a template (processed by a {@link TemplateEngine}) into a
+ * document using a pluggable {@link OutputRenderer} strategy.
  *
- * <p>The template processing strategy is fully polymorphic: any {@link TemplateEngine}
- * implementation can be supplied at construction time. Two built-in implementations are provided:
+ * <p>Both the template engine and the output renderer are fully polymorphic:
  * <ul>
- *   <li>{@link FreemarkerTemplateEngine} — backed by Apache FreeMarker (default)</li>
- *   <li>{@link ThymeleafTemplateEngine} — backed by Thymeleaf</li>
+ *   <li>Template engines: {@link FreemarkerTemplateEngine} (default), {@link ThymeleafTemplateEngine}</li>
+ *   <li>Output renderers: {@link PdfOutputRenderer} (default), {@link DocxOutputRenderer}</li>
  * </ul>
  *
- * <p><b>Backward-compatible usage (FreeMarker, default):</b>
+ * <p><b>PDF output (default, FreeMarker):</b>
  * <pre>{@code
  * ReportEngine engine = new ReportEngine();
  * }</pre>
  *
- * <p><b>Using Thymeleaf:</b>
+ * <p><b>DOCX output with Thymeleaf:</b>
  * <pre>{@code
- * ReportEngine engine = new ReportEngine(new ThymeleafTemplateEngine());
+ * ReportEngine engine = new ReportEngine(new ThymeleafTemplateEngine(), new DocxOutputRenderer());
  * }</pre>
  */
 public class ReportEngine {
@@ -33,41 +30,55 @@ public class ReportEngine {
     private static final Logger logger = Logger.getLogger(ReportEngine.class.getName());
 
     private final TemplateEngine templateEngine;
+    private final OutputRenderer outputRenderer;
 
     /**
-     * Creates a new {@code ReportEngine} that uses the default {@link FreemarkerTemplateEngine}.
-     * Templates are loaded from the classpath under {@code /templates}.
+     * Creates a new {@code ReportEngine} with the default {@link FreemarkerTemplateEngine}
+     * and {@link PdfOutputRenderer}.
      */
     public ReportEngine() {
-        this(new FreemarkerTemplateEngine());
+        this(new FreemarkerTemplateEngine(), new PdfOutputRenderer());
     }
 
     /**
-     * Creates a new {@code ReportEngine} with a custom FreeMarker configuration.
-     * This constructor is kept for backward compatibility.
+     * Creates a new {@code ReportEngine} with a custom FreeMarker configuration and PDF output.
+     * Kept for backward compatibility.
      *
      * @param freemarkerConfig the FreeMarker {@link freemarker.template.Configuration} to use
      */
     public ReportEngine(freemarker.template.Configuration freemarkerConfig) {
-        this(new FreemarkerTemplateEngine(freemarkerConfig));
+        this(new FreemarkerTemplateEngine(freemarkerConfig), new PdfOutputRenderer());
     }
 
     /**
-     * Creates a new {@code ReportEngine} that delegates template processing to the given
-     * {@link TemplateEngine} strategy.
+     * Creates a new {@code ReportEngine} with the given {@link TemplateEngine} and the default
+     * {@link PdfOutputRenderer}.
      *
      * @param templateEngine the template engine to use (FreeMarker, Thymeleaf, or custom)
      */
     public ReportEngine(TemplateEngine templateEngine) {
-        this.templateEngine = templateEngine;
+        this(templateEngine, new PdfOutputRenderer());
     }
 
     /**
-     * Generates a PDF report from a template.
+     * Creates a new {@code ReportEngine} with a custom {@link TemplateEngine} and
+     * {@link OutputRenderer}.
+     *
+     * @param templateEngine the template engine to use
+     * @param outputRenderer the output renderer to use (PDF, DOCX, or custom)
+     */
+    public ReportEngine(TemplateEngine templateEngine, OutputRenderer outputRenderer) {
+        this.templateEngine = templateEngine;
+        this.outputRenderer = outputRenderer;
+    }
+
+    /**
+     * Generates a report from a template and writes it to the given output stream.
+     * The output format is determined by the configured {@link OutputRenderer}.
      *
      * @param templateName the name of the template file (relative to the template directory)
      * @param data         the data model to be used in the template
-     * @param outputStream the output stream where the PDF will be written
+     * @param outputStream the output stream where the document will be written
      * @throws ReportGenerationException if there is an error generating the report
      */
     public void generateReport(String templateName, Map<String, Object> data, OutputStream outputStream)
@@ -75,16 +86,14 @@ public class ReportEngine {
         try {
             logger.info("Generating report using template: " + templateName);
 
-            // Step 1: process the template to obtain HTML
             String html = templateEngine.processTemplate(templateName, data);
+            logger.fine("HTML generated, converting to output format...");
 
-            logger.fine("HTML generated, converting to PDF...");
-
-            // Step 2: convert HTML to PDF using Flying Saucer
-            convertHtmlToPdf(html, outputStream);
+            byte[] output = outputRenderer.render(html);
+            outputStream.write(output);
+            outputStream.flush();
 
             logger.info("Report generated successfully");
-
         } catch (ReportGenerationException e) {
             throw e;
         } catch (Exception e) {
@@ -94,11 +103,12 @@ public class ReportEngine {
     }
 
     /**
-     * Generates a PDF report and saves it to a file.
+     * Generates a report and saves it to a file.
+     * The output format is determined by the configured {@link OutputRenderer}.
      *
      * @param templateName the name of the template file
      * @param data         the data model to be used in the template
-     * @param outputFile   the output file where the PDF will be saved
+     * @param outputFile   the output file where the document will be saved
      * @throws ReportGenerationException if there is an error generating the report
      */
     public void generateReport(String templateName, Map<String, Object> data, File outputFile)
@@ -111,11 +121,12 @@ public class ReportEngine {
     }
 
     /**
-     * Generates a PDF report and returns it as a byte array.
+     * Generates a report and returns it as a byte array.
+     * The output format is determined by the configured {@link OutputRenderer}.
      *
      * @param templateName the name of the template file
      * @param data         the data model to be used in the template
-     * @return the PDF content as a byte array
+     * @return the document content as a byte array
      * @throws ReportGenerationException if there is an error generating the report
      */
     public byte[] generateReportAsBytes(String templateName, Map<String, Object> data)
@@ -135,17 +146,13 @@ public class ReportEngine {
     }
 
     /**
-     * Converts HTML content to PDF using Flying Saucer.
+     * Returns the {@link OutputRenderer} strategy used by this engine.
      *
-     * @param html         the HTML content to convert
-     * @param outputStream the output stream where the PDF will be written
-     * @throws IOException if there is an error writing to the output stream
+     * @return the current output renderer
      */
-    private void convertHtmlToPdf(String html, OutputStream outputStream) throws IOException {
-        ITextRenderer renderer = new ITextRenderer();
-        renderer.setDocumentFromString(html);
-        renderer.layout();
-        renderer.createPDF(outputStream);
-        outputStream.flush();
+    public OutputRenderer getOutputRenderer() {
+        return outputRenderer;
     }
 }
+
+

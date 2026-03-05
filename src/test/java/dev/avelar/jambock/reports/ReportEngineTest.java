@@ -317,5 +317,112 @@ class ReportEngineTest {
         thymeleafEngine.generateReport("non-existent-template", data, tempDir.resolve("test.pdf").toFile()),
         "Should throw exception for non-existent Thymeleaf template");
   }
+
+  // =========================================================================
+  // DOCX output renderer tests
+  // =========================================================================
+
+  @Test
+  void testDocxOutputRendererDirectly() throws ReportGenerationException {
+    String html = "<html><body><h1>Test Title</h1><p>Hello World</p></body></html>";
+    DocxOutputRenderer renderer = new DocxOutputRenderer();
+    byte[] docxBytes = renderer.render(html);
+
+    assertNotNull(docxBytes, "DOCX bytes should not be null");
+    assertTrue(docxBytes.length > 0, "DOCX bytes should not be empty");
+
+    // DOCX files are ZIP-based: check PK header
+    assertEquals(0x50, docxBytes[0] & 0xFF, "Should start with PK (ZIP) header byte 0");
+    assertEquals(0x4B, docxBytes[1] & 0xFF, "Should start with PK (ZIP) header byte 1");
+  }
+
+  @Test
+  void testDocxOutputRendererWithTable() throws ReportGenerationException {
+    String html = "<html><body>" +
+        "<table><thead><tr><th>Name</th><th>Price</th></tr></thead>" +
+        "<tbody><tr><td>Widget A</td><td>25.99</td></tr></tbody></table>" +
+        "</body></html>";
+    DocxOutputRenderer renderer = new DocxOutputRenderer();
+    byte[] docxBytes = renderer.render(html);
+
+    assertNotNull(docxBytes);
+    assertTrue(docxBytes.length > 0);
+  }
+
+  @Test
+  void testDocxOutputRendererWithList() throws ReportGenerationException {
+    String html = "<html><body><ul><li>Item 1</li><li>Item 2</li></ul></body></html>";
+    DocxOutputRenderer renderer = new DocxOutputRenderer();
+    byte[] docxBytes = renderer.render(html);
+
+    assertNotNull(docxBytes);
+    assertTrue(docxBytes.length > 0);
+  }
+
+  @Test
+  void testReportEngineWithDocxRenderer() throws ReportGenerationException {
+    ReportEngine docxEngine = new ReportEngine(new FreemarkerTemplateEngine(), new DocxOutputRenderer());
+    Map<String, Object> data = createSampleReportData();
+
+    byte[] docxBytes = docxEngine.generateReportAsBytes("sample-report.ftl", data);
+
+    assertNotNull(docxBytes, "DOCX bytes should not be null");
+    assertTrue(docxBytes.length > 0, "DOCX bytes should not be empty");
+    assertEquals(0x50, docxBytes[0] & 0xFF, "Should be a valid DOCX (ZIP) file");
+  }
+
+  @Test
+  void testReportEngineWithDocxRendererToFile() throws ReportGenerationException {
+    ReportEngine docxEngine = new ReportEngine(new FreemarkerTemplateEngine(), new DocxOutputRenderer());
+    Map<String, Object> data = createSampleReportData();
+
+    File outputFile = tempDir.resolve("test-report.docx").toFile();
+    docxEngine.generateReport("sample-report.ftl", data, outputFile);
+
+    assertTrue(outputFile.exists(), "DOCX file should exist");
+    assertTrue(outputFile.length() > 0, "DOCX file should not be empty");
+  }
+
+  @Test
+  void testReportBuilderGenerateAsDocx() throws ReportGenerationException {
+    Map<String, Object> data = createSampleReportData();
+
+    byte[] docxBytes = new ReportBuilder(engine)
+        .withTemplate("sample-report.ftl")
+        .withData(data)
+        .generateAsDocx();
+
+    assertNotNull(docxBytes, "DOCX bytes should not be null");
+    assertTrue(docxBytes.length > 0, "DOCX bytes should not be empty");
+    assertEquals(0x50, docxBytes[0] & 0xFF, "Should be a valid DOCX (ZIP) file");
+  }
+
+  @Test
+  void testReportBuilderWithOutputRendererOverride() throws ReportGenerationException {
+    Map<String, Object> data = createSampleReportData();
+
+    byte[] docxBytes = new ReportBuilder(engine)
+        .withTemplate("sample-report.ftl")
+        .withData(data)
+        .withOutputRenderer(new DocxOutputRenderer())
+        .generateAsBytes();
+
+    assertNotNull(docxBytes);
+    assertTrue(docxBytes.length > 0);
+    assertEquals(0x50, docxBytes[0] & 0xFF, "Should be a valid DOCX (ZIP) file");
+  }
+
+  @Test
+  void testDocxRendererIsSetOnEngine() {
+    ReportEngine docxEngine = new ReportEngine(new FreemarkerTemplateEngine(), new DocxOutputRenderer());
+    assertInstanceOf(DocxOutputRenderer.class, docxEngine.getOutputRenderer(),
+        "Output renderer should be DocxOutputRenderer");
+  }
+
+  @Test
+  void testDefaultRendererIsPdf() {
+    assertInstanceOf(PdfOutputRenderer.class, engine.getOutputRenderer(),
+        "Default output renderer should be PdfOutputRenderer");
+  }
 }
 

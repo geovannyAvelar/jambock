@@ -7,7 +7,8 @@ import java.util.Map;
 
 /**
  * Builder for creating and generating reports.
- * Provides a fluent API for setting template, data, output destination, and page settings.
+ * Provides a fluent API for setting template, data, output destination, page settings,
+ * and output format.
  */
 public class ReportBuilder {
 
@@ -16,6 +17,7 @@ public class ReportBuilder {
     private final Map<String, Object> data;
     private PageOrientation orientation = PageOrientation.PORTRAIT;
     private PageSize pageSize = PageSize.A4;
+    private OutputRenderer outputRenderer;
 
     /**
      * Creates a new ReportBuilder with the given engine.
@@ -114,36 +116,60 @@ public class ReportBuilder {
     }
 
     /**
+     * Overrides the {@link OutputRenderer} for this report, ignoring the one configured on the
+     * {@link ReportEngine}. Useful when a single engine is shared but different reports need
+     * different output formats.
+     *
+     * @param outputRenderer the renderer to use (e.g. {@link PdfOutputRenderer}, {@link DocxOutputRenderer})
+     * @return this builder for method chaining
+     */
+    public ReportBuilder withOutputRenderer(OutputRenderer outputRenderer) {
+        this.outputRenderer = outputRenderer;
+        return this;
+    }
+
+    /**
      * Generates the report and writes it to the specified output stream.
      *
-     * @param outputStream the output stream where the PDF will be written
+     * @param outputStream the output stream where the document will be written
      * @throws ReportGenerationException if there's an error generating the report
      */
     public void generateTo(OutputStream outputStream) throws ReportGenerationException {
         validateState();
-        engine.generateReport(templateName, data, outputStream);
+        resolvedEngine().generateReport(templateName, data, outputStream);
     }
 
     /**
      * Generates the report and saves it to the specified file.
      *
-     * @param outputFile the output file where the PDF will be saved
+     * @param outputFile the output file where the document will be saved
      * @throws ReportGenerationException if there's an error generating the report
      */
     public void generateTo(File outputFile) throws ReportGenerationException {
         validateState();
-        engine.generateReport(templateName, data, outputFile);
+        resolvedEngine().generateReport(templateName, data, outputFile);
     }
 
     /**
      * Generates the report and returns it as a byte array.
      *
-     * @return the PDF content as a byte array
+     * @return the document content as a byte array
      * @throws ReportGenerationException if there's an error generating the report
      */
     public byte[] generateAsBytes() throws ReportGenerationException {
         validateState();
-        return engine.generateReportAsBytes(templateName, data);
+        return resolvedEngine().generateReportAsBytes(templateName, data);
+    }
+
+    /**
+     * Convenience method: generates the report as a DOCX byte array using {@link DocxOutputRenderer},
+     * regardless of the renderer configured on the engine.
+     *
+     * @return the DOCX content as a byte array
+     * @throws ReportGenerationException if there's an error generating the report
+     */
+    public byte[] generateAsDocx() throws ReportGenerationException {
+        return withOutputRenderer(new DocxOutputRenderer()).generateAsBytes();
     }
 
     /**
@@ -156,5 +182,17 @@ public class ReportBuilder {
             throw new IllegalStateException("Template name must be set before generating report");
         }
     }
+
+    /**
+     * Returns either a one-shot engine with the overridden renderer, or the original engine
+     * if no renderer override has been specified.
+     */
+    private ReportEngine resolvedEngine() {
+        if (outputRenderer != null) {
+            return new ReportEngine(engine.getTemplateEngine(), outputRenderer);
+        }
+        return engine;
+    }
 }
+
 
